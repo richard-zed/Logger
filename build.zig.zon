@@ -1,0 +1,14 @@
+.{
+    .name = .Logger,
+    .version = "0.0.1",
+    .dependencies = .{
+        .strfz = .{
+            .url = "https://github.com/scribbles-code/strfz/archive/refs/tags/v0.2.1.tar.gz",
+            .hash = "strfz-0.2.1-MZjqDIF_AACGaUizIHNeKsc-fw8_RbNDzTChr9TG252p",
+        },
+    },
+    .minimum_zig_version = "0.16.0",
+
+    .paths = .{""},
+    .fingerprint = 0x9fd216c59a12132d,
+}
