@@ -131,6 +131,7 @@ pub const Logger = struct {
     }
 
 /// The main logging function. Errors are swallowed.
+// TODO: Actually CHECK the console for color capabiltity.
     pub fn log(
         comptime level: Levels,
         comptime scope: ?@EnumLiteral(),
@@ -142,81 +143,52 @@ pub const Logger = struct {
         const mask = @as(u4,@intCast(1)) << @intFromEnum(level);
         if ((mask & log_to_file) != 0) {
             var format_buffer: [512]u8 = undefined;
-            const formatted_message = format_file(&format_buffer, level, scope, message) catch "Buffer ran out of space.\n";
+            const formatted_message = format_message(&format_buffer, level, scope, message, false) catch "Buffer ran out of space.\n";
             write_to_file(formatted_message) catch {};
         }
         if ((mask & log_to_stderr) != 0) {
             var format_buffer: [512]u8 = undefined;
-            const formatted_message = format_stderr(&format_buffer, level, scope, message) catch "Buffer ran out of space.\n";
+            const formatted_message = format_message(&format_buffer, level, scope, message, true) catch "Buffer ran out of space.\n";
             write_to_stderr(formatted_message) catch {};
         }
     }
 
-/// Formats the string, using the format below, for files.
+/// Formats the string, using the format below.
 /// [ {timestamp} ] {app}({scope}){Level} - {message}
-//TODO: Maybe merge with format_stderr using colorized parameter. Some consoles do not support color.
-    fn format_file(
+//TODO: Maybe merge scope?
+    fn format_message(
         buffer: []u8,
         comptime level: Levels,
         comptime scope: ?@EnumLiteral(),
-        message: []const u8)
-    ![]u8 {
-        var time_buffer: [20]u8 = undefined;
-        const timestamp = get_time(&time_buffer);
-        if (scope) |scope_enum| {
-            return try std.fmt.bufPrint(buffer,
-                "[ {s} ] {s}({s}){} - {s}\n", .{
-                timestamp,
-                app,
-                @tagName(scope_enum),
-                level,
-                message,
-            });
-        } else {
-            return try std.fmt.bufPrint(buffer,
-                "[ {s} ] {s}{} - {s}\n", .{
-                timestamp,
-                app,
-                level,
-                message,
-            });
-        }
-    }
-
-/// Formats the string, using the formatting below, for colorized stderr output.
-/// [ {timestamp} ] {app}({scope}){Level} - {message}
-    fn format_stderr(
-        buffer: []u8,
-        comptime level: Levels,
-        comptime scope: ?@EnumLiteral(),
-        message: []const u8)
+        message: []const u8,
+        colorized: bool)
     ![]u8 {
         var time_buffer: [20]u8 = undefined;
         const timestamp = get_time(&time_buffer);
         if (scope) |scope_enum| {
             return try std.fmt.bufPrint(buffer,
                 "{s}[ {s} ] {s}{s}({s}){} {0s}- {s}{s} {s}\n", .{
-                Colors.Gray,
+                if (colorized) Colors.Gray else "",
                     timestamp,
-                Colors.level(level),
+                if (colorized) Colors.level(level) else "",
                     app,
                     @tagName(scope_enum),
                     level,
-                Colors.Purple,
+                if (colorized) Colors.Purple else "",
                     message,
-                Colors.Clear,
+                if (colorized) Colors.Clear else "",
             });
         } else {
             return try std.fmt.bufPrint(buffer,
                 "{s}[ {s} ] {s}{s}{} {0s}- {s}{s} {s}\n", .{
-                Colors.Gray,
+                if (colorized) Colors.Gray else "",
                     timestamp,
-                Colors.level(level),
+                if (colorized) Colors.level(level) else "",
                     app,
                     level,
-                Colors.Purple,
+                if (colorized) Colors.Purple else "",
                     message,
-                Colors.Clear,
+                if (colorized) Colors.Clear else "",
             });
         }
     }
@@ -262,8 +234,6 @@ test "Colors" {
         Colors.Gray,
         Colors.Yellow, Colors.Orange, Colors.Red,
         Colors.Clear
-
-
     });
 }
 
