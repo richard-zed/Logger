@@ -53,9 +53,6 @@ pub const Logger = struct {
     var log_to_file: u4 = undefined;
     var log_to_stderr: u4 = undefined;
 
-    var f: [64]u8 = undefined;
-    var f_len: usize = 64;
-
 /// Initiate function, required before use. Can fail.
 /// _io, _env: The main application's io, and EnvMap.
 /// _app: The application's name for logging purposes.
@@ -77,21 +74,22 @@ pub const Logger = struct {
             var file_buffer: [64]u8 = undefined;
             if (_env.contains("XDG_CACHE_HOME")) {
                 const cache = _env.get("XDG_CACHE_HOME") orelse "/tmp";
-                _ = try std.fmt.bufPrint(
+                file = try std.fmt.bufPrint(
                     &file_buffer,
                     "{s}/{s}/log",
                     .{cache,app});
-                f_len = cache.len + app.len + 5;
             } else if (_env.contains("HOME")) {
                 const home = _env.get("HOME") orelse "/tmp";
-                _ = try std.fmt.bufPrint(
+                file = try std.fmt.bufPrint(
                     &file_buffer,
                     "{s}/.cache/{s}/log",
                     .{home,app});
-                f_len = home.len + app.len + 12;
+            } else {
+                file = try std.fmt.bufPrint(
+                    &file_buffer,
+                    "/tmp/{s}/log",
+                    .{app});
             }
-            @memcpy(f[0..f_len],file_buffer[0..f_len]);
-            file = f[0..f_len];
             create_log_file() catch |err| {
                 log(.Error,.init,"Logfile creation failed: {s}", .{@errorName(err)});
             };
