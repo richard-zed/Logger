@@ -2,20 +2,6 @@
 const std = @import("std");
 const strfz = @import("strfz");
 
-// Possible Logger Errors evoked from .init().
-const LoggerError = error{
-    NoSpaceLeft,        AccessDenied,       Unexpected,
-    Canceled,           DiskQuota,          FileTooBig,
-    SystemResources,    DeviceBusy,         PermissionDenied,
-    IsDir,              NoDevice,           ProcessFdQuotaExceeded,
-    WouldBlock,         FileBusy,           SystemFdQuotaExceeded,
-    PathAlreadyExists,  SymLinkLoop,        LinkQuotaExceeded,
-    PathNotFound,       NetworkNotFound,    ReadOnlyFileSystem,
-    FileNotFound,       NotDir,             FileLocksUnsupported,
-    BadPathName,        PipeBusy,           AntivirusInterference,
-    Streaming,          NameTooLong,
-};
-
 /// Error severity levels.
 const Levels = enum {
     Info,
@@ -67,7 +53,7 @@ pub const Logger = struct {
         comptime _app:[]const u8,
         comptime _log_to_file: ?u4,
         comptime _log_to_stderr: ?u4)
-    LoggerError!void {
+    !void {
         io = _io;
         app = _app;
         log_to_file = _log_to_file orelse 0b1111;
@@ -101,7 +87,7 @@ pub const Logger = struct {
 /// Private function used to create the log file written to.
 /// Automatically written to ${XDG_CACHE_HOME}/{app}/{timestamp}.
 /// A symlink at $XDG_CACHE_HOME/{app}/log will point to the latest timestamped file.
-    fn create_log_file() LoggerError!void {
+    fn create_log_file() !void {
         const path = std.Io.Dir.path.dirname(file) orelse return error.PathNotFound;
 
         const dir = try std.Io.Dir.cwd().createDirPathOpen(
@@ -214,7 +200,6 @@ test "Colors" {
     try env.put("XDG_CACHE_HOME", "/tmp/logger-tests");
 
     try Logger.init(std.testing.io, &env, "LoggerTests", 0b1111, 0b1111);
-//     Logger.log(.Info,.Colors,"{s}Testing {s}Colors.",.{
     Logger.log(.Info,"Colors","{s}Te{s}st{s}in{s}g C{s}ol{s}or{s}s.{s}",.{
         Colors.Blue, Colors.Purple, Colors.Green,
         Colors.Gray,
