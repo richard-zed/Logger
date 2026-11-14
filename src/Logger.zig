@@ -61,20 +61,24 @@ pub const Logger = struct {
 
         if (log_to_file > 0 ) {
             var file_buffer: [64]u8 = undefined;
-            if (_env.contains("XDG_CACHE_HOME")) {
-                const cache = _env.get("XDG_CACHE_HOME") orelse "/tmp";
+            if (_env.get("XDG_CACHE_HOME")) |XDG_CACHE_HOME| {
                 _ = try std.fmt.bufPrint(
                     &file_buffer,
                     "{s}/{s}/log",
-                    .{cache,app});
-                f_len = cache.len + app.len + 5;
-            } else if (_env.contains("HOME")) {
-                const home = _env.get("HOME") orelse "/tmp";
+                    .{XDG_CACHE_HOME,app});
+                f_len = XDG_CACHE_HOME.len + app.len + 5;
+            } else if (_env.get("HOME")) |HOME| {
                 _ = try std.fmt.bufPrint(
                     &file_buffer,
                     "{s}/.cache/{s}/log",
-                    .{home,app});
-                f_len = home.len + app.len + 12;
+                    .{HOME,app});
+                f_len = HOME.len + app.len + 12;
+            } else {
+                _ = try std.fmt.bufPrint(
+                    &file_buffer,
+                    "/tmp/{s}/log",
+                    .{app});
+                f_len = 4 + app.len + 12;
             }
             @memcpy(f[0..f_len],file_buffer[0..f_len]);
             file = f[0..f_len];
@@ -147,7 +151,6 @@ pub const Logger = struct {
                 message[0..@min(format_buffer.len,message.len)],
                 true) catch "";
             write_to_stderr(formatted_message) catch {};
-            std.debug.print("{d} v {d}\n",.{msg.len,formatted_message.len});
         }
     }
 
@@ -179,7 +182,9 @@ pub const Logger = struct {
 
 /// Opens the logging file, created in init(), and writes the last line.
     fn write_to_file(message:  []const u8) !void {
-        const log_file = std.Io.Dir.cwd().openFile(io, file, .{ .mode = .read_write }) catch |err| return err;
+        const log_file = std.Io.Dir.cwd().openFile(io,
+            file,
+            .{ .mode = .read_write }) catch |err| return err;
         defer log_file.close(io);
 
         var writer = log_file.writer(io, &.{});
