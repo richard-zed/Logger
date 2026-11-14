@@ -75,7 +75,7 @@ pub const Logger = struct {
                     .{app});
             }
             create_log_file() catch |err| {
-                log(.Error,"init","Logfile creation failed: {s}", .{@errorName(err)});
+                log(.Error,"init()","Logfile creation failed: {s}", .{@errorName(err)});
             };
         }
     }
@@ -105,7 +105,12 @@ pub const Logger = struct {
         const link = dir.symLink(
             io,
             timestamped_path,
-            file, .{}) catch unreachable;
+            file, .{}) catch |err| {
+                log(.Error,
+                    "create_log_file()",
+                    "Unable to create symlink: {s}.",
+                    .{err});
+            };
         return link;
     }
 
