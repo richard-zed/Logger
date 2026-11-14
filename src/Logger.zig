@@ -12,14 +12,14 @@ const Levels = enum {
 
 /// Colors used for stderr output.
 pub const Colors = struct {
-    const Red: []const u8 = "\x1b[38;2;255;96;96m";
-    const Orange: []const u8 = "\x1b[38;2;255;192;96m";
-    const Yellow: []const u8 = "\x1b[38;2;255;255;128m";
-    const Gray: []const u8 = "\x1b[38;2;128;128;192m";
-    const Green: []const u8 = "\x1b[38;2;96;192;96m";
-    const Purple: []const u8 = "\x1b[38;2;192;128;255m";
-    const Blue: []const u8 = "\x1b[38;2;96;96;255m";
-    const Clear: []const u8 = "\x1b[0m";
+    pub const Red: []const u8 = "\x1b[38;2;255;96;96m";
+    pub const Orange: []const u8 = "\x1b[38;2;255;192;96m";
+    pub const Yellow: []const u8 = "\x1b[38;2;255;255;128m";
+    pub const Gray: []const u8 = "\x1b[38;2;128;128;192m";
+    pub const Green: []const u8 = "\x1b[38;2;96;192;96m";
+    pub const Purple: []const u8 = "\x1b[38;2;192;128;255m";
+    pub const Blue: []const u8 = "\x1b[38;2;96;96;255m";
+    pub const Clear: []const u8 = "\x1b[0m";
 
     fn level(l: Levels) []const u8 {
         return switch (l) {
