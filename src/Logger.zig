@@ -90,10 +90,7 @@ pub const Logger = struct {
     fn create_log_file() !void {
         const path = std.Io.Dir.path.dirname(file) orelse return error.PathNotFound;
 
-        const dir = try std.Io.Dir.cwd().createDirPathOpen(
-            io,
-            path,
-            .{});
+        const dir = try std.Io.Dir.cwd().createDirPathOpen(io, path, .{});
 
         var time_buffer: [20]u8 = undefined;
         const timestamp = get_time(&time_buffer);
@@ -124,18 +121,33 @@ pub const Logger = struct {
         comptime msg: []const u8,
         args: anytype)
     void {
+        // TODO: Account for args unwrapping.
         var msg_buffer: [512]u8 = undefined;
-        const message = std.fmt.bufPrint(&msg_buffer, msg, args) catch "Buffer ran out of space.";
+        const message = std.fmt.bufPrint(
+            &msg_buffer,
+            msg[0..@min(msg_buffer.len,msg.len)],
+            args) catch "Buffer ran out of space.";
         const mask = @as(u4,@intCast(1)) << @intFromEnum(level);
         if ((mask & log_to_file) != 0) {
-            var format_buffer: [512]u8 = undefined;
-            const formatted_message = format_message(&format_buffer, level, scope, message, false) catch "Buffer ran out of space.\n";
+            var format_buffer: [768]u8 = undefined;
+            const formatted_message = format_message(
+                &format_buffer,
+                level,
+                scope,
+                message[0..@min(format_buffer.len,message.len)],
+                false) catch "";
             write_to_file(formatted_message) catch {};
         }
         if ((mask & log_to_stderr) != 0) {
-            var format_buffer: [512]u8 = undefined;
-            const formatted_message = format_message(&format_buffer, level, scope, message, true) catch "Buffer ran out of space.\n";
+            var format_buffer: [768]u8 = undefined;
+            const formatted_message = format_message(
+                &format_buffer,
+                level,
+                scope,
+                message[0..@min(format_buffer.len,message.len)],
+                true) catch "";
             write_to_stderr(formatted_message) catch {};
+            std.debug.print("{d} v {d}\n",.{msg.len,formatted_message.len});
         }
     }
 
@@ -245,7 +257,7 @@ test "Very long messages" {
 
     try Logger.init(std.testing.io, &env, "LoggerTests", null, null);
     Logger.log(.Error, "buffer",
-        "I need to test really long strings and logging to see what happens. {s}I think colors might be the easiest way to inflate this. {s}But {0s}I'm {1s}not sure. So maybe I should write more because this probably isn't enough.{s}D. Gray Man is kinda trash but that Brightdown opening is actually pretty {0s}great{1s}.{2s} What do you think?{s}",
+        "I need to test really long strings and logging to see what happens. {s}I think colors might be the easiest way to inflate this. {s}But {0s}I'm {1s}not sure. So maybe I should write more because this probably isn't enough.{s}D. Gray Man is kinda trash but that Brightdown opening is actually pretty {0s}great{1s}.{2s} What do you think?{s} I increased the size of the buffer and now need to increase these to match that.",
         .{Colors.Blue, Colors.Red, Colors.Green, Colors.Gray,}
     );
     Logger.log(.Info, "buffer",
@@ -253,7 +265,7 @@ test "Very long messages" {
         .{}
     );
     Logger.log(.Error, "buffer",
-        "That one was fine actually and passed both buffers without issue. Let's try to make one that will fail on the initial args buffer. They're both the same size so this will need to be even longer than the first one. I should probably use colors to expand this string easily, but I would like a grasp for exactly how many characters I have before it overflows that buffer. Maybe another sentence or two? That reached the format buffer limit, but not the args buffer limit. Still not quite long enough. That's what she said.",
+        "That one was fine actually and passed both buffers without issue. Let's try to make one that will fail on the initial args buffer. They're both the same size so this will need to be even longer than the first one. I should probably use colors to expand this string easily, but I would like a grasp for exactly how many characters I have before it overflows that buffer. Maybe another sentence or two? That reached the format buffer limit, but not the args buffer limit. Still not quite long enough. That's what she said. The first one actually ran out of space and I'm not sure how that can happen when it's basically clamped to the size of the buffer itself. So that will be interesting to figure out I guess. This one is clamping properly seemingly, But I need to write a good bit more to see for certain. I bet what's happening is the args unwrap in msg_buffer, while they're already unwrapped in format_buffer, so the extra space taken from the colors are exceeding msg_buffer.",
         .{}
     );
 }
