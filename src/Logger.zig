@@ -93,7 +93,7 @@ pub const Logger = struct {
             @memcpy(f[0..f_len],file_buffer[0..f_len]);
             file = f[0..f_len];
             create_log_file() catch |err| {
-                log(.Error,.init,"Logfile creation failed: {s}", .{@errorName(err)});
+                log(.Error,"init","Logfile creation failed: {s}", .{@errorName(err)});
             };
         }
     }
@@ -134,7 +134,7 @@ pub const Logger = struct {
 // TODO: Actually CHECK the console for color capabiltity.
     pub fn log(
         comptime level: Levels,
-        comptime scope: ?@EnumLiteral(),
+        comptime scope: ?[]const u8,
         comptime msg: []const u8,
         args: anytype)
     void {
@@ -155,42 +155,28 @@ pub const Logger = struct {
 
 /// Formats the string, using the format below.
 /// [ {timestamp} ] {app}({scope}){Level} - {message}
-//TODO: Maybe merge scope?
     fn format_message(
         buffer: []u8,
         comptime level: Levels,
-        comptime scope: ?@EnumLiteral(),
+        comptime scope: ?[]const u8,
         message: []const u8,
         colorized: bool)
     ![]u8 {
         var time_buffer: [20]u8 = undefined;
         const timestamp = get_time(&time_buffer);
-        if (scope) |scope_enum| {
-            return try std.fmt.bufPrint(buffer,
-                "{s}[ {s} ] {s}{s}({s}){} {0s}- {s}{s} {s}\n", .{
-                if (colorized) Colors.Gray else "",
-                    timestamp,
-                if (colorized) Colors.level(level) else "",
-                    app,
-                    @tagName(scope_enum),
-                    level,
-                if (colorized) Colors.Purple else "",
-                    message,
-                if (colorized) Colors.Clear else "",
-            });
-        } else {
-            return try std.fmt.bufPrint(buffer,
-                "{s}[ {s} ] {s}{s}{} {0s}- {s}{s} {s}\n", .{
-                if (colorized) Colors.Gray else "",
-                    timestamp,
-                if (colorized) Colors.level(level) else "",
-                    app,
-                    level,
-                if (colorized) Colors.Purple else "",
-                    message,
-                if (colorized) Colors.Clear else "",
-            });
-        }
+        const scope_str = scope orelse "";
+        return try std.fmt.bufPrint(buffer,
+            "{s}[ {s} ] {s}{s}({s}){} {0s}- {s}{s} {s}\n", .{
+            if (colorized) Colors.Gray else "",
+                timestamp,
+            if (colorized) Colors.level(level) else "",
+                app,
+                scope_str,
+                level,
+            if (colorized) Colors.Purple else "",
+                message,
+            if (colorized) Colors.Clear else "",
+        });
     }
 
 /// Opens the logging file, created in init(), and writes the last line.
@@ -229,7 +215,7 @@ test "Colors" {
 
     try Logger.init(std.testing.io, &env, "LoggerTests", 0b1111, 0b1111);
 //     Logger.log(.Info,.Colors,"{s}Testing {s}Colors.",.{
-    Logger.log(.Info,.Colors,"{s}Te{s}st{s}in{s}g C{s}ol{s}or{s}s.{s}",.{
+    Logger.log(.Info,"Colors","{s}Te{s}st{s}in{s}g C{s}ol{s}or{s}s.{s}",.{
         Colors.Blue, Colors.Purple, Colors.Green,
         Colors.Gray,
         Colors.Yellow, Colors.Orange, Colors.Red,
@@ -244,12 +230,12 @@ test "Levels functioning" {
     try env.put("XDG_CACHE_HOME", "/tmp/logger-tests");
 
     try Logger.init(std.testing.io, &env, "LoggerTests", null, null);
-    Logger.log(.Critical, .levels, "saba is back?!", .{});
+    Logger.log(.Critical, "levels", "saba is back?!", .{});
     try std.Io.sleep(std.testing.io, std.Io.Duration.fromMilliseconds(100), std.Io.Clock.real);
     Logger.log(.Error, null, "ohno", .{});
-    Logger.log(.Warn, .levels, "gotta test warn", .{});
+    Logger.log(.Warn, "levels", "gotta test warn", .{});
     try std.Io.sleep(std.testing.io, std.Io.Duration.fromMilliseconds(100), std.Io.Clock.real);
-    Logger.log(.Info, .levels, "fuckoff", .{});
+    Logger.log(.Info, "levels", "fuckoff", .{});
 }
 
 test "Log_to_ functioning" {
@@ -259,11 +245,11 @@ test "Log_to_ functioning" {
     try env.put("XDG_CACHE_HOME", "/tmp/logger-tests");
 
     try Logger.init(std.testing.io, &env, "LoggerTests", 0b0000, 0b1100);
-    Logger.log(.Critical, .log_to_, "shachi is back?!", .{});
+    Logger.log(.Critical, "log_to_", "shachi is back?!", .{});
     try std.Io.sleep(std.testing.io, std.Io.Duration.fromMilliseconds(100), std.Io.Clock.real);
-    Logger.log(.Error, .log_to_, "I need these messages to be different.", .{});
-    Logger.log(.Warn, .log_to_, "gotta test warn", .{});
-    Logger.log(.Info, .log_to_, "Not these though hopefully.", .{});
+    Logger.log(.Error, "log_to_", "I need these messages to be different.", .{});
+    Logger.log(.Warn, "log_to_", "gotta test warn", .{});
+    Logger.log(.Info, "log_to_", "Not these though hopefully.", .{});
 }
 
 test "Very long messages" {
@@ -273,15 +259,15 @@ test "Very long messages" {
     try env.put("XDG_CACHE_HOME", "/tmp/logger-tests");
 
     try Logger.init(std.testing.io, &env, "LoggerTests", null, null);
-    Logger.log(.Error, .buffer,
+    Logger.log(.Error, "buffer",
         "I need to test really long strings and logging to see what happens. {s}I think colors might be the easiest way to inflate this. {s}But {0s}I'm {1s}not sure. So maybe I should write more because this probably isn't enough.{s}D. Gray Man is kinda trash but that Brightdown opening is actually pretty {0s}great{1s}.{2s} What do you think?{s}",
         .{Colors.Blue, Colors.Red, Colors.Green, Colors.Gray,}
     );
-    Logger.log(.Info, .buffer,
+    Logger.log(.Info, "buffer",
         "That one was actually too long so maybe I should try without colors and see where it goes. I don't know how long I need to make this but let's try to figure it out. This seems like it's a perfectly fine length and won't cause problems. But for how much longer is that true? That much is still fine. I'll stop here and see how it goes. It went fine, still.",
         .{}
     );
-    Logger.log(.Error, .buffer,
+    Logger.log(.Error, "buffer",
         "That one was fine actually and passed both buffers without issue. Let's try to make one that will fail on the initial args buffer. They're both the same size so this will need to be even longer than the first one. I should probably use colors to expand this string easily, but I would like a grasp for exactly how many characters I have before it overflows that buffer. Maybe another sentence or two? That reached the format buffer limit, but not the args buffer limit. Still not quite long enough. That's what she said.",
         .{}
     );
