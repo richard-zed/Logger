@@ -35,12 +35,10 @@ pub const Colors = struct {
 pub const Logger = struct {
     var io: std.Io = undefined;
     var app: []const u8 = undefined;
+    var file_buffer: [64]u8 = undefined;
     var file: []const u8 = undefined;
     var log_to_file: u4 = undefined;
     var log_to_stderr: u4 = undefined;
-
-    var f: [64]u8 = undefined;
-    var f_len: usize = 64;
 
 /// Initiate function, required before use. Can fail.
 /// _io, _env: The main application's io, and EnvMap.
@@ -60,28 +58,22 @@ pub const Logger = struct {
         log_to_stderr = _log_to_stderr orelse 0b1111;
 
         if (log_to_file > 0 ) {
-            var file_buffer: [64]u8 = undefined;
             if (_env.get("XDG_CACHE_HOME")) |XDG_CACHE_HOME| {
-                _ = try std.fmt.bufPrint(
+                file = try std.fmt.bufPrint(
                     &file_buffer,
                     "{s}/{s}/log",
                     .{XDG_CACHE_HOME,app});
-                f_len = XDG_CACHE_HOME.len + app.len + 5;
             } else if (_env.get("HOME")) |HOME| {
-                _ = try std.fmt.bufPrint(
+                file = try std.fmt.bufPrint(
                     &file_buffer,
                     "{s}/.cache/{s}/log",
                     .{HOME,app});
-                f_len = HOME.len + app.len + 12;
             } else {
-                _ = try std.fmt.bufPrint(
+                file = try std.fmt.bufPrint(
                     &file_buffer,
                     "/tmp/{s}/log",
                     .{app});
-                f_len = 4 + app.len + 12;
             }
-            @memcpy(f[0..f_len],file_buffer[0..f_len]);
-            file = f[0..f_len];
             create_log_file() catch |err| {
                 log(.Error,"init","Logfile creation failed: {s}", .{@errorName(err)});
             };
@@ -210,6 +202,8 @@ fn get_time(buffer: *[20]u8) []u8 {
     return strfz.formatUnix(buffer, format, secs, 0);
 }
 
+
+// TODO: Make these actually ASSERT something.
 test "Colors" {
     var env = std.process.Environ.Map.init(std.testing.allocator);
     defer env.deinit();
@@ -269,7 +263,7 @@ test "Very long messages" {
         "That one was actually too long so maybe I should try without colors and see where it goes. I don't know how long I need to make this but let's try to figure it out. This seems like it's a perfectly fine length and won't cause problems. But for how much longer is that true? That much is still fine. I'll stop here and see how it goes. It went fine, still.",
         .{}
     );
-    Logger.log(.Error, "buffer",
+    Logger.log(.Warn, "buffer",
         "That one was fine actually and passed both buffers without issue. Let's try to make one that will fail on the initial args buffer. They're both the same size so this will need to be even longer than the first one. I should probably use colors to expand this string easily, but I would like a grasp for exactly how many characters I have before it overflows that buffer. Maybe another sentence or two? That reached the format buffer limit, but not the args buffer limit. Still not quite long enough. That's what she said. The first one actually ran out of space and I'm not sure how that can happen when it's basically clamped to the size of the buffer itself. So that will be interesting to figure out I guess. This one is clamping properly seemingly, But I need to write a good bit more to see for certain. I bet what's happening is the args unwrap in msg_buffer, while they're already unwrapped in format_buffer, so the extra space taken from the colors are exceeding msg_buffer.",
         .{}
     );
