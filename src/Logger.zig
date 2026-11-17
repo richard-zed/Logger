@@ -40,11 +40,11 @@ pub const Logger = struct {
     var log_to_file: u4 = undefined;
     var log_to_stderr: u4 = undefined;
 
-/// Initiate function, required before use. Can fail.
+/// Initialization function, required before use. Can fail.
 /// _io, _env: The main application's io, and EnvMap.
 /// _app: The application's name for logging purposes.
 /// _log_to_file: Bitmask for whether to write to file based on severity Level.
-/// _log_to_stderr: Bitmas for whether to write to stderr based on severity Level.
+/// _log_to_stderr: Bitmask for whether to write to stderr based on severity Level.
     pub fn init(
         _io: std.Io,
         _env: *const std.process.Environ.Map,
